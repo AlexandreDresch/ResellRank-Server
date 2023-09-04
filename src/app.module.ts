@@ -1,4 +1,5 @@
-import { Module } from '@nestjs/common';
+import { MiddlewareConsumer, Module, ValidationPipe } from '@nestjs/common';
+import { APP_PIPE } from '@nestjs/core';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ReportsModule } from './reports/reports.module';
@@ -6,9 +7,15 @@ import { UsersModule } from './users/users.module';
 import { User } from './users/entities/user.entity';
 import { Report } from './reports/entities/report.entity';
 
+/* eslint-disable */
+const cookieSession = require('cookie-session');
+
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true }),
+    ConfigModule.forRoot({
+      isGlobal: true,
+      envFilePath: `.env.${process.env.NODE_ENV}`,
+    }),
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
       useFactory: (configService: ConfigService) => ({
@@ -20,6 +27,7 @@ import { Report } from './reports/entities/report.entity';
         database: configService.get('POSTGRES_DATABASE'),
         entities: [User, Report],
         synchronize: true,
+        dropSchema: process.env.NODE_ENV !== "production"
       }),
       inject: [ConfigService],
     }),
@@ -27,6 +35,21 @@ import { Report } from './reports/entities/report.entity';
     ReportsModule,
   ],
   controllers: [],
-  providers: [],
+  providers: [
+    {
+      provide: APP_PIPE,
+      useValue: new ValidationPipe({ whitelist: true }),
+    },
+  ],
 })
-export class AppModule {}
+export class AppModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer
+      .apply(
+        cookieSession({
+          keys: [process.env.SECRET],
+        }),
+      )
+      .forRoutes('*');
+  }
+}
