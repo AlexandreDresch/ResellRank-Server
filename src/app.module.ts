@@ -27,7 +27,7 @@ const cookieSession = require('cookie-session');
         database: configService.get('POSTGRES_DATABASE'),
         entities: [User, Report],
         synchronize: true,
-        dropSchema: process.env.NODE_ENV !== "production"
+        dropSchema: process.env.NODE_ENV === "test"
       }),
       inject: [ConfigService],
     }),
